@@ -14,8 +14,24 @@ jobs:
         with:
           fetch-depth: 0
           lfs: true
-      - name: Push to hub
+      - name: Push to hub with LFS
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        # Pushes whatever branch triggered the workflow to the `main` branch of the Hugging Face Space
-        run: git push --force https://mayankanand25:$HF_TOKEN@huggingface.co/spaces/mayankanand25/AI-Fake-Article-Detector HEAD:main
+        run: |
+          # Remove original git history to avoid pushing large blobs from past commits
+          rm -rf .git
+          git init
+          git config user.email "bot@github-action"
+          git config user.name "GitHub Action Sync"
+          
+          # Setup Git LFS to track the large CSV files
+          git lfs install
+          git lfs track "*.csv"
+          
+          # Add and commit the files (the CSVs will now be stored as LFS properly)
+          git add .gitattributes
+          git add .
+          git commit -m "Sync from GitHub"
+          
+          # Force push this single fresh commit to the Hugging Face main branch
+          git push --force https://mayankanand25:$HF_TOKEN@huggingface.co/spaces/mayankanand25/AI-Fake-Article-Detector HEAD:main
