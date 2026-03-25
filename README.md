@@ -1,3 +1,13 @@
+---
+title: AI Fake Article Detector
+emoji: 📰
+colorFrom: blue
+colorTo: indigo
+sdk: streamlit
+app_file: app.py
+pinned: false
+---
+
 # Vityarthi AIML Project: AI Fake Article Detector
 
 ## About the Project
