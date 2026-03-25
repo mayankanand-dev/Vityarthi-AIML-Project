@@ -6,6 +6,7 @@ colorTo: indigo
 sdk: streamlit
 app_file: app.py
 pinned: false
+URL: https://mayankanand25-ai-fake-article-detector.hf.space
 ---
 
 # Vityarthi AIML Project: AI Fake Article Detector
