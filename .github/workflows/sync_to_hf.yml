@@ -24,9 +24,9 @@ jobs:
           git config user.email "bot@github-action"
           git config user.name "GitHub Action Sync"
           
-          # Setup Git LFS to track the large CSV files
+          # Setup Git LFS to track the large CSV files and binary files (PDFs, Images)
           git lfs install
-          git lfs track "*.csv"
+          git lfs track "*.csv" "*.pdf" "*.jpg" "*.jpeg" "*.png"
           
           # Add and commit the files (the CSVs will now be stored as LFS properly)
           git add .gitattributes
