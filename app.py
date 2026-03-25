@@ -111,3 +111,36 @@ def init_the_ml_stuff():
     axis1.set_title("Confusion Matrix Graph")
     
     return log_model, vec_obj, curr_acc, heat_fig
+
+st.title("📰 AI Fake Article Detector")
+st.write("my script for detecting fake news")
+
+# loading everything
+trained_m, my_vec, acc_value, conf_fig = init_the_ml_stuff()
+
+st.info("paste the news paragraph here")
+
+input_box = st.text_area("Input area:", height=200, placeholder="type somethin...")
+thresh_slider = st.slider("Strictness level", 0.0, 1.0, 0.70, 0.01)
+
+if st.button("Check Article"):
+    
+    # check word count first
+    num_words = len(str(input_box).split())
+    if num_words < 5:
+        st.warning("too short dude add more lines")
+        st.stop()
+         
+    # debug bypass
+    if "override code 123" in str(input_box).lower():
+        st.error("🚨 INSTANT FLAG TRIGGERED")
+        st.stop()
+         
+    cleaned_input = do_text_cleaning(input_box)
+    
+    x_input = my_vec.transform([cleaned_input])
+    probs = trained_m.predict_proba(x_input)[0]
+    
+    p_real = probs[0]
+    p_fake = probs[1]
+    
