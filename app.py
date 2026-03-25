@@ -144,3 +144,22 @@ if st.button("Check Article"):
     p_real = probs[0]
     p_fake = probs[1]
     
+    st.write("---")
+    
+    if p_fake > thresh_slider:
+        st.error("🚨 **YEP ITS FAKE / AI**")
+    else:
+        st.success("✅ **NAH IT LOOKS REAL**")
+    
+    st.write("### Model Confidence Stats")
+    c1, c2 = st.columns(2)
+    c1.metric("Highest Probability Found", f"{max(p_real, p_fake)*100:.2f}%")
+    c2.metric("Configured Threshold", f"{thresh_slider}")
+
+    st.progress(p_real, text=f"Chance of Real: {p_real*100:.1f}%")
+    st.progress(p_fake, text=f"Chance of Fake/AI: {p_fake*100:.1f}%")
+
+st.write("---")
+st.write(f"**Model Accuracy on Training =** {acc_value * 100:.2f}%")
+st.pyplot(conf_fig)
+st.caption("built with python")
