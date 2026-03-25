@@ -22,16 +22,16 @@ Honestly, it's pretty straightforward. I have two massive CSV files of spam and 
 
 ## Screenshots
 Here's what the app looks like when it's starting up:
-![Loading Screen](screenshots/loading_page.png)
+![Loading Screen](screenshots/loading%20screen.jpg)
 
 The main interface before you paste anything:
-![Landing Page](screenshots/landing_page.png)
+![Landing Page](screenshots/landingpage.jpg)
 
 When the model catches some fake/AI text:
-![Fake Text Detected](screenshots/fake_detected.png)
+![Fake Text Detected](screenshots/Fake%20Article%20detected.jpg)
 
 When the text seems legit:
-![Real Text Detected](screenshots/real_detected.png)
+![Real Text Detected](screenshots/Real%20Article%20detected.jpg)
 
 ## Installation
 If you actually want to run this yourself on your laptop, here's how:
