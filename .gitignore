@@ -1,2 +1,10 @@
 .venv
 __pycache__
+
+# removed per evaluator feedback
+.github/
+Project_Report_1.pdf
+
+# large training data - model is pre-trained, use train_model.py to regenerate
+v_spam_db.csv
+v_legit_db.csv
