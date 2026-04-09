@@ -1,122 +1,78 @@
 import pandas as pd
-import os
-import re
-import pickle
+import os, re, pickle
 
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 
-# yeh line isliye - relative path se run karo toh bhi sahi kaam kare
 curr_path = os.path.dirname(os.path.abspath(__file__))
 
 
-# yeh same function hai jo app.py mein bhi hai
-# alag file mein duplicate karna pada kyunki train aur app dono ko chahiye tha
-def do_text_cleaning(messy_string):
-    step_one = str(messy_string).lower()
-    tmp_words = step_one.split()
-    ok_words = []
-    
-    # links hata do - yeh model ki accuracy gira rahe the
-    for w in tmp_words:
+def cleanText(s):
+    s1 = str(s).lower()
+    wrds = s1.split()
+    ok = []
+    for w in wrds:
         if "http" not in w and "www." not in w:
-            ok_words.append(w)
-            
-    stage_two = " ".join(ok_words)
-    
-    # bas letters aur spaces chahiye, baaki sab hatao
-    stage_three = re.sub(r'[^a-z ]', ' ', stage_two)
-    
-    # yeh loop isliye kyunki remove karne ke baad double spaces reh jaate hain
-    while "  " in stage_three:
-        stage_three = stage_three.replace("  ", " ")
-        
-    return stage_three.strip()
+            ok.append(w)
+    s2 = " ".join(ok)
+    s3 = re.sub(r'[^a-z ]', ' ', s2)
+    while "  " in s3:
+        s3 = s3.replace("  ", " ")
+    return s3.strip()
 
 
-# --- data padhna ---
+print("data padh raha...")
 
-print("CSV files padh raha hoon...")
+fakedf = pd.read_csv(os.path.join(curr_path, 'v_spam_db.csv'))
+realdf = pd.read_csv(os.path.join(curr_path, 'v_legit_db.csv'))
 
-s_path = os.path.join(curr_path, 'v_spam_db.csv')
-r_path = os.path.join(curr_path, 'v_legit_db.csv')
+fakedf['label'] = 1
+realdf['label'] = 0
 
-df_f = pd.read_csv(s_path)
-df_r = pd.read_csv(r_path)
+alldf = pd.concat([fakedf, realdf], ignore_index=True)
+alldf = alldf.dropna(subset=['title', 'text', 'label'])
 
-# 1 matlab fake, 0 matlab real - yeh manually set karna pada
-df_f['label'] = 1
-df_r['label'] = 0
+# shuffle nahi kiya tha pehle, model sirf ek side seekh raha tha
+shuf = alldf.sample(frac=1, random_state=42).reset_index(drop=True)
+shuf['combined'] = shuf['title'] + " " + shuf['text']
 
-all_data = pd.concat([df_f, df_r], ignore_index=True)
+print("cleaning...")
 
-# kuch rows mein title ya text missing tha, drop kar diya
-all_data = all_data.dropna(subset=['title', 'text', 'label'])
+corp = []
+for t in shuf['combined']:
+    corp.append(cleanText(t))
+shuf['final'] = corp
 
-# shuffle karna zaroori tha warna pehle saare fake phir saare real aa rahe the
-shuffled_data = all_data.sample(frac=1, random_state=42).reset_index(drop=True)
+# countvectorizer bhi try kiya tha, tfidf better tha
+Vect = TfidfVectorizer(max_features=5000, stop_words="english")
+Vect.fit(shuf['final'])
+Xmat = Vect.transform(shuf['final'])
+tgt = shuf['label']
 
-# title aur text dono milake diye - sirf text se accuracy thodi kam thi
-shuffled_data['temp_combined'] = shuffled_data['title'] + " " + shuffled_data['text']
+Xtr, Xte, ytr, yte = train_test_split(Xmat, tgt, test_size=0.2, random_state=42)
 
+print("training...")
 
-# --- text clean karo ---
+# max_iter badhana pada, 100 pe ruk raha tha
+mdl = LogisticRegression(max_iter=500)
+mdl.fit(Xtr, ytr)
 
-print("Text clean ho raha hai... thoda time lagega")
+preds = mdl.predict(Xte)
+acc = accuracy_score(yte, preds)
+print(f"accuracy: {acc * 100:.2f}%")
 
-corpus_list = []
-for txt in shuffled_data['temp_combined']:
-    corpus_list.append(do_text_cleaning(txt))
-    
-shuffled_data['final_text'] = corpus_list
+o1 = open(os.path.join(curr_path, 'model.pkl'), 'wb')
+pickle.dump(mdl, o1)
+o1.close()
 
+o2 = open(os.path.join(curr_path, 'vectorizer.pkl'), 'wb')
+pickle.dump(Vect, o2)
+o2.close()
 
-# --- vectorize karo ---
+o3 = open(os.path.join(curr_path, 'accuracy.txt'), 'w')
+o3.write(str(acc))
+o3.close()
 
-# pehle CountVectorizer try kiya tha, TfidfVectorizer better results aaye
-vec_obj = TfidfVectorizer(max_features=5000, stop_words="english")
-vec_obj.fit(shuffled_data['final_text'])
-x_matrix = vec_obj.transform(shuffled_data['final_text'])
-
-target_var = shuffled_data['label']
-
-# standard 80/20 split, random_state fix kiya taki results same rahe baar baar
-X_train, X_test, y_train, y_test = train_test_split(
-    x_matrix, target_var, test_size=0.2, random_state=42
-)
-
-
-# --- model train karo ---
-
-print("Training chal rahi hai...")
-
-# logistic regression try kiya - simple hai lekin accuracy kaafi achhi aayi
-# max_iter badhana pada kyunki default 100 pe converge nahi ho raha tha
-log_model = LogisticRegression(max_iter=500)
-log_model.fit(X_train, y_train)
-
-my_preds = log_model.predict(X_test)
-curr_acc = accuracy_score(y_test, my_preds)
-print(f"Ho gaya! Accuracy: {curr_acc * 100:.2f}%")
-
-
-# --- save karo ---
-
-# model pkl mein save karo taki app.py ko baar baar train na karna pade
-out1 = open(os.path.join(curr_path, 'model.pkl'), 'wb')
-pickle.dump(log_model, out1)
-out1.close()
-
-# vectorizer alag save kiya - yeh bhi chahiye hoga prediction ke time
-out2 = open(os.path.join(curr_path, 'vectorizer.pkl'), 'wb')
-pickle.dump(vec_obj, out2)
-out2.close()
-
-# accuracy txt mein save ki taki app mein show ho sake
-out3 = open(os.path.join(curr_path, 'accuracy.txt'), 'w')
-out3.write(str(curr_acc))
-out3.close()
-
-print("model.pkl, vectorizer.pkl, accuracy.txt - sab save ho gaya")
+print("sab save ho gaya")

@@ -1,14 +1,12 @@
 import streamlit as st
 import pickle
-import os
-import re
+import os, re
 import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-warnings.filterwarnings('ignore')  # warnings aa rahe the bahut saare console mein, band kar diya
+warnings.filterwarnings('ignore')  # bahut saare warnings aa rahe the
 
-# page ka basic setup
 st.set_page_config(page_title="AI Fake Article Detector", page_icon='🔥', layout='centered')
 
 st.markdown("""
@@ -18,81 +16,66 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-# __file__ se path nikaala - hardcode karta toh sirf mere pc pe chalta
 curr_path = os.path.dirname(os.path.abspath(__file__))
 
 
-# yeh function alag banana pada kyunki apply() ke andar seedha deta tha
-# toh kabhi kabhi NaN pe crash ho jaata tha, yeh zyada safe hai
-def do_text_cleaning(messy_string):
-    step_one = str(messy_string).lower()
+# apply() se seedha nahi chal raha tha, toh alag function banana pada
+def cleanText(messy_string):
+    s1 = str(messy_string).lower()
     
-    # links hata do pehle - inse model confuse hota tha, accuracy bhi gir rahi thi
-    tmp_words = step_one.split()
-    ok_words = []
-    
-    for w in tmp_words:
+    wrds = s1.split()
+    ok = []
+    for w in wrds:
         if "http" not in w and "www." not in w:
-            ok_words.append(w)
-            
-    stage_two = " ".join(ok_words)
+            ok.append(w)
+    s2 = " ".join(ok)
     
-    # yeh regex stackoverflow se mila - numbers aur punctuation ek saath hat jaate hain
-    stage_three = re.sub(r'[^a-z ]', ' ', stage_two)
+    # stackoverflow wala regex
+    s3 = re.sub(r'[^a-z ]', ' ', s2)
     
-    # strip ke baad bhi double spaces bache the, isliye yeh loop dalna pada
-    while "  " in stage_three:
-        stage_three = stage_three.replace("  ", " ")
-        
-    return stage_three.strip()
+    while "  " in s3:
+        s3 = s3.replace("  ", " ")
+    return s3.strip()
 
 
-# cache_resource lagaya hai warna slider touch karo toh bhi dobara model load hota tha
-# streamlit ki yahi problem hai, har interaction pe page re-run karta hai
+# bina iske slider se bhi reload ho raha tha
 @st.cache_resource(show_spinner="Loading model...")
 def init_the_ml_stuff():
     
-    model_file = os.path.join(curr_path, 'model.pkl')
-    vec_file   = os.path.join(curr_path, 'vectorizer.pkl')
-    acc_file   = os.path.join(curr_path, 'accuracy.txt')
+    mf = os.path.join(curr_path, 'model.pkl')
+    vf = os.path.join(curr_path, 'vectorizer.pkl')
+    af = os.path.join(curr_path, 'accuracy.txt')
 
-    # ek baar yeh without error chup chaap band ho gaya tha kyunki file nahi mili
-    # tab se yeh check daal diya
-    if not os.path.exists(model_file):
+    # crash ho raha tha silently
+    if not os.path.exists(mf):
         st.error("model.pkl not found. Please run train_model.py first.")
         st.stop()
 
-    # model load kar raha hoon
-    pkl_in = open(model_file, 'rb')
-    log_model = pickle.load(pkl_in)
-    pkl_in.close()
+    f1 = open(mf, 'rb')
+    myModel = pickle.load(f1)
+    f1.close()
 
-    # vectorizer alag file mein save kiya tha - dono ko alag alag use karna hota hai
-    vec_in = open(vec_file, 'rb')
-    vec_obj = pickle.load(vec_in)
-    vec_in.close()
+    f2 = open(vf, 'rb')
+    Vect = pickle.load(f2)
+    f2.close()
 
-    # training ke time jo accuracy aayi thi woh txt mein save ki thi
-    # ab csv nahi hai toh yahi se read karo
-    acc_in = open(acc_file, 'r')
-    curr_acc = float(acc_in.read())
-    acc_in.close()
+    f3 = open(af, 'r')
+    myacc = float(f3.read())
+    f3.close()
 
-    # confusion matrix training ke waqt ka tha, ab woh values hardcode kar di
-    # kyunki ab hum csv nahi rakh rahe, retrain nahi hoga
-    saved_cm = [[9823, 147], [132, 9898]]
-    heat_fig, axis1 = plt.subplots(figsize=(6, 4))
-    sns.heatmap(saved_cm, annot=True, fmt='d', cmap='Blues', ax=axis1)
-    axis1.set_title("Confusion Matrix Graph")
+    # training ke waqt ke values, ab csv nahi hai toh hardcode
+    cmat = [[9823, 147], [132, 9898]]
+    cfig, ax = plt.subplots(figsize=(6, 4))
+    sns.heatmap(cmat, annot=True, fmt='d', cmap='Blues', ax=ax)
+    ax.set_title("Confusion Matrix Graph")
 
-    return log_model, vec_obj, curr_acc, heat_fig
+    return myModel, Vect, myacc, cfig
 
 
 st.title("📰 AI Fake Article Detector")
 st.write("my script for detecting fake news")
 
-# sab load karo
-trained_m, my_vec, acc_value, conf_fig = init_the_ml_stuff()
+myModel, Vect, myacc, cfig = init_the_ml_stuff()
 
 st.info("paste the news paragraph here")
 
@@ -101,9 +84,8 @@ thresh_slider = st.slider("Strictness level", 0.0, 1.0, 0.70, 0.01)
 
 if st.button("Check Article"):
     
-    # bahut chhota text deta tha toh model kuch bhi bol deta tha
-    num_words = len(str(input_box).split())
-    if num_words < 5:
+    nw = len(str(input_box).split())
+    if nw < 5:
         st.warning("too short dude add more lines")
         st.stop()
          
@@ -112,32 +94,31 @@ if st.button("Check Article"):
         st.error("🚨 INSTANT FLAG TRIGGERED")
         st.stop()
          
-    cleaned_input = do_text_cleaning(input_box)
+    cln = cleanText(input_box)
     
-    # pehle sirf predict karta tha binary mein
-    # baad mein predict_proba add kiya toh threshold slider ka fayda hua
-    x_input = my_vec.transform([cleaned_input])
-    probs = trained_m.predict_proba(x_input)[0]
+    # pehle binary predict karta tha, baad mein proba add kiya threshold ke liye
+    xinp = Vect.transform([cln])
+    prbs = myModel.predict_proba(xinp)[0]
     
-    p_real = probs[0]
-    p_fake = probs[1]
+    pr = prbs[0]
+    pf = prbs[1]
     
     st.write("---")
     
-    if p_fake > thresh_slider:
+    if pf > thresh_slider:
         st.error("🚨 **YEP ITS FAKE / AI**")
     else:
         st.success("✅ **NAH IT LOOKS REAL**")
     
     st.write("### Model Confidence Stats")
     c1, c2 = st.columns(2)
-    c1.metric("Highest Probability Found", f"{max(p_real, p_fake)*100:.2f}%")
+    c1.metric("Highest Probability Found", f"{max(pr, pf)*100:.2f}%")
     c2.metric("Configured Threshold", f"{thresh_slider}")
 
-    st.progress(p_real, text=f"Chance of Real: {p_real*100:.1f}%")
-    st.progress(p_fake, text=f"Chance of Fake/AI: {p_fake*100:.1f}%")
+    st.progress(pr, text=f"Chance of Real: {pr*100:.1f}%")
+    st.progress(pf, text=f"Chance of Fake/AI: {pf*100:.1f}%")
 
 st.write("---")
-st.write(f"**Model Accuracy on Training =** {acc_value * 100:.2f}%")
-st.pyplot(conf_fig)
+st.write(f"**Model Accuracy on Training =** {myacc * 100:.2f}%")
+st.pyplot(cfig)
 st.caption("built with python")
