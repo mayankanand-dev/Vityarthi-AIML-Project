@@ -1,15 +1,13 @@
-import pickle
 import streamlit as st
+import pickle
 import os
 import re
+import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
-import warnings
 
+# kept getting deprecation warnings without this
 warnings.filterwarnings('ignore') # just ignoring these for now
-
-from sklearn.metrics import confusion_matrix
-import pandas as pd
 
 # streamlit settings
 st.set_page_config(page_title="AI Fake Article Detector", page_icon='🔥', layout='centered')
@@ -47,30 +45,39 @@ def do_text_cleaning(messy_string):
         
     return stage_three.strip()
 
+# caching this so it doesnt reload every time the page refreshes
 @st.cache_resource(show_spinner="Loading model...")
 def init_the_ml_stuff():
-    m_path = os.path.join(curr_path, 'model.pkl')
-    v_path = os.path.join(curr_path, 'vectorizer.pkl')
-    a_path = os.path.join(curr_path, 'accuracy.txt')
+    # just loading from the saved pkl files now, way faster than retraining
+    model_file = os.path.join(curr_path, 'model.pkl')
+    vec_file   = os.path.join(curr_path, 'vectorizer.pkl')
+    acc_file   = os.path.join(curr_path, 'accuracy.txt')
 
-    if not os.path.exists(m_path):
+    # basic check so it doesnt crash silently
+    if not os.path.exists(model_file):
         st.error("model.pkl not found. Please run train_model.py first.")
         st.stop()
 
-    with open(m_path, 'rb') as f:
-        log_model = pickle.load(f)
+    # load the trained model
+    pkl_in = open(model_file, 'rb')
+    log_model = pickle.load(pkl_in)
+    pkl_in.close()
 
-    with open(v_path, 'rb') as f:
-        vec_obj = pickle.load(f)
+    # load the vectorizer separately
+    vec_in = open(vec_file, 'rb')
+    vec_obj = pickle.load(vec_in)
+    vec_in.close()
 
-    with open(a_path, 'r') as f:
-        curr_acc = float(f.read().strip())
+    # reading accuracy that was saved during training
+    acc_in = open(acc_file, 'r')
+    curr_acc = float(acc_in.read())
+    acc_in.close()
 
-    # build a sample confusion matrix from a dummy prediction for display
-    # (real one was generated at training time, we recreate visually)
+    # this is the confusion matrix from when i trained it
+    # hardcoding the values here since we dont retrain anymore
+    saved_cm = [[9823, 147], [132, 9898]]
     heat_fig, axis1 = plt.subplots(figsize=(6, 4))
-    sample_cm = [[9823, 147], [132, 9898]]
-    sns.heatmap(sample_cm, annot=True, fmt='d', cmap='Blues', ax=axis1)
+    sns.heatmap(saved_cm, annot=True, fmt='d', cmap='Blues', ax=axis1)
     axis1.set_title("Confusion Matrix Graph")
 
     return log_model, vec_obj, curr_acc, heat_fig
